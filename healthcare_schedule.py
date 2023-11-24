@@ -395,20 +395,30 @@ class HealthcareSchedule:
         None
         """
 
-        print(df_long.columns)
+        # Define custom legend labels and colors
+        legend_labels = {'D1': 'D1', 'D2': 'D2', 'Mx': 'Mx', 'Night': 'Night'}
+        legend_colors = {'D1': 'blue', 'D2': 'green', 'Mx': 'orange', 'Night': 'purple'}
 
+        # Create a custom legend based on shift types
+        custom_legend = [plt.Line2D([0], [0], marker='o', color='w', label=legend_labels[shift], 
+                                    markersize=10, markerfacecolor=legend_colors[shift]) for shift in legend_labels]
+
+        # Pivot the table for plotting using pivot_table
         df_pivot = df_long.pivot_table(index='Staff', columns='Date', values='Shift', aggfunc='first')
 
         # Plotting
         plt.figure(figsize=(20, 10))
-        sns.scatterplot(data=df_long, x='Date', y='Staff', hue='Shift', s=100, palette='tab10', legend='full')
+        sns.scatterplot(data=df_long, x='Date', y='Staff', hue='Shift', s=100, palette=legend_colors, legend='full')
 
-        # Customize the axes and legend
+        # Customize the axes
         plt.yticks(range(len(df_pivot.index)), df_pivot.index)
         plt.gca().invert_yaxis()  # Invert y axis so that the top staff member is at the top
         plt.xlabel('Date')
         plt.title('Staff Shift Schedule')
-        plt.legend(title='Shifts', bbox_to_anchor=(1.05, 1), loc='upper left')
+
+        # Add the custom legend
+        plt.legend(handles=custom_legend, title='Shifts', bbox_to_anchor=(1.05, 1), loc='upper left')
+
         plt.grid(True, which='major', linestyle='--', linewidth=0.5)
         plt.tight_layout()
 
