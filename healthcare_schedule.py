@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
 import warnings
+import matplotlib.dates as mdates
 
 
 class HealthcareSchedule:
@@ -568,7 +569,6 @@ class HealthcareSchedule:
         ax.invert_yaxis()  # Invert y axis so that the top staff member is at the top
 
         # Add hours worked as annotations
-        # Add hours worked as annotations
         for i, staff_member in enumerate(staff_list):
             total_hours_worked = staff_hours_worked.get(staff_member, 0)
             max_hours_allowed = self.staff_info[staff_member]['work_percentage'] / 100 * self.MAX_HOURS_FULL_TIME
@@ -581,6 +581,30 @@ class HealthcareSchedule:
             
             ax.text(df_long['Date'].min() - x_offset, y_position, hours_text, verticalalignment='top', fontsize=10, color='black')
 
+        y_labels = {staff: i for i, staff in enumerate(df_long['Staff'].unique())}
+
+        # Iterate through each staff member and draw lines for gaps greater than 5 days
+        for staff_member in df_long['Staff'].unique():
+            staff_dates = df_long[df_long['Staff'] == staff_member]['Date'].drop_duplicates()
+            sorted_dates = sorted(mdates.date2num(staff_dates))  # Convert to Matplotlib date format and sort
+
+            for i in range(len(sorted_dates) - 1):
+                current_date = sorted_dates[i]
+                next_date = sorted_dates[i + 1]
+                gap = next_date - current_date
+
+                if gap > 5:
+                    # Coordinates for the start and end points of the line
+                    y_value = y_labels[staff_member]  # Get the numerical y-coordinate
+                    start_point = (mdates.num2date(current_date), y_value)
+                    end_point = (mdates.num2date(next_date), y_value)
+
+                    # Draw a line between the points
+                    ax.plot([start_point[0], end_point[0]], [start_point[1], end_point[1]], color='black')
+
+                    # Annotate the line with the gap, adjusting y_value as needed
+                    mid_point = (start_point[0] + (end_point[0] - start_point[0]) / 2, y_value)
+                    ax.text(mid_point[0], mid_point[1] + 0.1, f"{gap}d", ha='center', va='bottom', fontsize=8, color='black')
 
             
         plt.xlabel('Date')
