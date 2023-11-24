@@ -39,12 +39,40 @@ class HealthcareSchedule:
         self._add_max_days_worked_constraints()
         self._add_max_consecutive_days_worked_constraints()
         self._add_role_specific_shift_constraints()
-        self._add_shift_distribution_objective( )
+        self._add_shift_distribution_objective()
+        self._add_pref_consecutive_days_constraints()
 
         # ... other constraints
         
         #  self._add_weekend_fairness_constraint()
         self._compile_objective_function()
+    
+    # Prefer to assign staff members to their preffered shift lengt    
+    def _add_pref_consecutive_days_constraints(self, penalty_weight=0.0000000001):
+        for staff_member, info in self.staff_info.items():
+            pref_consecutive_days = info["pref_consecutive_days"]
+
+            for week in range(self.num_weeks):
+                for start_day in range(self.days_per_week):
+                    # Calculate the end day for the consecutive work period
+                    end_day = min(start_day + pref_consecutive_days, self.days_per_week)
+
+                    # Count the number of working days in this period
+                    working_days = pulp.lpSum(self.shifts[staff_member, week, day, shift_type]
+                                            for day in range(start_day, end_day)
+                                            for shift_type in self.shift_hours)
+
+                    # Variables for positive and negative deviation
+                    pos_deviation = pulp.LpVariable(f"pos_dev_{staff_member}_{week}_{start_day}", lowBound=0)
+                    neg_deviation = pulp.LpVariable(f"neg_dev_{staff_member}_{week}_{start_day}", lowBound=0)
+
+                    # Add constraints to link the deviation variables with the working days
+                    self.problem += (pos_deviation >= working_days - pref_consecutive_days)
+                    self.problem += (neg_deviation >= pref_consecutive_days - working_days)
+
+                    # Add the penalties to the objective function
+                    self.objective_function_components.append(penalty_weight * (pos_deviation + neg_deviation))
+
 
     def _add_max_consecutive_days_worked_constraints(self):
         max_consecutive_days = 7  # Maximum number of consecutive days a staff member can work
@@ -208,7 +236,7 @@ class HealthcareSchedule:
                         for day_shift in ["D1", "D2", "Mx"]:
                             self.problem += (self.shifts[staff_member, week, day, day_shift] == 0)
 
-    
+    # Tries to reduce isolated work days and off days
     def _add_isolated_day_constraints(self, isolated_day_penalty_weight=100):
         self.isolated_work_vars = {}
         self.isolated_off_vars = {}
@@ -306,7 +334,7 @@ class HealthcareSchedule:
     def solve(self):
         # Solve the LP problem and handle the solution
         # Use PuLP's solver to solve the problem
-        solver = pulp.PULP_CBC_CMD(msg=1, threads=8, maxSeconds=300)
+        solver = pulp.PULP_CBC_CMD(msg=1, threads=32, maxSeconds=300)
         self.problem.solve(solver)
 
         # Check if an optimal solution was found
@@ -444,7 +472,6 @@ class HealthcareSchedule:
                     print(f"{overworked[0]} (Overworked by {overworked[1]} hours) can swap with {underworked[0]} (Underworked by {underworked[1]} hours)")
         else:
             print("No optimal solution found. Please check the problem constraints.")
-
 
     def plot_schedule(self):
         # Create the DataFrame
