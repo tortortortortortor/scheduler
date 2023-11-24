@@ -164,8 +164,33 @@ class HealthcareSchedule:
             # Generate textual report as shown in your example
          #   self.debugVariables()
             self.generate_textreport()
+            self.print_schedule()
         else:
             print("No optimal solution found. Will not generate a report.")
+
+    def print_schedule(self):
+            # Check the status of the solution and print the schedule
+            if self.problem.status == pulp.LpStatusOptimal:
+                for week in range(self.num_weeks):
+                    print(f"Week {week + 1}:")
+                    for day in range(self.days_per_week):
+                        day_schedule = []
+                        for shift_type in self.shift_hours:
+                            # List of staff members working this shift on this day
+                            working_staff = [staff_member for staff_member in self.staff_info if pulp.value(self.shifts[staff_member, week, day, shift_type]) == 1]
+                            
+                            # Check for non-night workers assigned to night shifts
+                            if shift_type == "Night":
+                                non_night_workers = [staff_member for staff_member in working_staff if self.staff_info[staff_member]["shift"] != "Night"]
+                                if non_night_workers:
+                                    print(f"  Error: Non-night workers assigned to night shift: {', '.join(non_night_workers)}")
+
+                            if working_staff:
+                                day_schedule.append(f"{', '.join(working_staff)} {shift_type}")
+                        print(f"  Day {day + 1}: {' | '.join(day_schedule)}")
+                    print()  # Adds an empty line for better readability between weeks
+            else:
+                print("No optimal solution found. Please check the problem constraints.")
 
     def debugVariables(self):
         for variable in self.problem.variables():
