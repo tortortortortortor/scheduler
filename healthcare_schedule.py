@@ -32,7 +32,7 @@ class HealthcareSchedule:
 
     def add_constraints(self):
         # Add various constraints
-        self._add_work_hours_constraints()
+        self._add_work_hours_constraints(0.04, 0.20)
         self._add_isolated_day_constraints()
         self._add_weekend_work_constraints()
         self._add_shift_type_constraints()
@@ -189,12 +189,12 @@ class HealthcareSchedule:
                 self.problem += pulp.lpSum(self.shifts[staff_member, week, day, "Night"] for staff_member in self.staff_info) == 1, f"One_Night_Shift_Week{week}_Day{day}"
 
     # Ensures that each staff member works within their allowed hours
-    def _add_work_hours_constraints(self):
+    def _add_work_hours_constraints(self, day_shift_tolerance, night_shift_tolerance):
         # Constants
         MAX_HOURS_FULL_TIME = 1622
-        TOLERANCE = 0.05  # 5%
+        TOLERANCE = day_shift_tolerance
         MAX_HOURS_NIGHT_SHIFT = 2000  # Increased maximum hours for night shift workers
-        NIGHT_SHIFT_TOLERANCE = 0.20  # Increased tolerance for night shift workers
+        NIGHT_SHIFT_TOLERANCE = night_shift_tolerance  # Increased tolerance for night shift workers
 
         # Lower and upper bounds for full-time and night shift full-time
         lower_bound_full_time = MAX_HOURS_FULL_TIME * (1 - TOLERANCE)
