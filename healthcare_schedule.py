@@ -38,6 +38,7 @@ class HealthcareSchedule:
         self._add_shift_type_constraints()
         self._add_max_days_worked_constraints()
         self._add_max_consecutive_days_worked_constraints()
+        self._add_role_specific_shift_constraints()
         # ... other constraints
         
         #  self._add_weekend_fairness_constraint()
@@ -102,6 +103,19 @@ class HealthcareSchedule:
 
                         # Apply the constraint
                         self.problem += (shift_sum <= max_days_in_7, f"Max_{max_days_in_7}_D1_Shifts_{staff_member}_Week{week}_StartDay{start_day}")
+
+    # Prefer to assign staff members to their preferred shift type
+    def _add_role_specific_shift_constraints(self):
+            for staff_member, info in self.staff_info.items():
+                assigned_shift = info["shift"]
+
+                for week in range(self.num_weeks):
+                    for day in range(self.days_per_week):
+                        for shift_type in self.shift_hours:
+                            # Staff member can only work their assigned shift type
+                            if shift_type != assigned_shift:
+                                self.problem += (self.shifts[staff_member, week, day, shift_type] == 0)
+
 
     def _add_shift_type_constraints(self):
         for week in range(self.num_weeks):
