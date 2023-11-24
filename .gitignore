@@ -1,2 +1,6 @@
 ~$Staff_Shift_Schedule_2024.xlsx
 .DS_Store
+__pycache__
+*.pyc
+Staff_Shift_Schedule_2024.xlsx
+staff_schedule.png

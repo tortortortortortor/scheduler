@@ -32,9 +32,6 @@ shift_hours = {
     "Night": 10 # 2100 to 0700
 }
 
-# Constants
-hours_per_year_full_time = 1622  # Maximum hours in a year for a 100% position
-
 # Dictionary to hold the shift variables for each staff member and shift type
 shifts = {(staff_member, week, day, shift_type): pulp.LpVariable(f"shift_{staff_member}_{week}_{day}_{shift_type}", cat='Binary')
           for staff_member in staff_info
@@ -49,11 +46,9 @@ objective_function_components = []
 isolated_day_penalty_weight = 100
 fairness_penalty_weight = 1
 
-
 # Additional binary variables for isolated days
 isolated_work_vars = {}
 isolated_off_vars = {}
-
 
 for staff_member in staff_info:
     for week in range(num_weeks):
@@ -62,7 +57,6 @@ for staff_member in staff_info:
             isolated_off_var = pulp.LpVariable(f"isolated_off_{staff_member}_{week}_{day}", cat='Binary')
             isolated_work_vars[(staff_member, week, day)] = isolated_work_var
             isolated_off_vars[(staff_member, week, day)] = isolated_off_var
-
 
             # Constraints for isolated working day
             if day == 0:  # First day of the week
@@ -100,7 +94,7 @@ for staff_member in staff_info:
         schedule_problem += weekend_work_vars[staff_member, week] >= shifts[staff_member, week, 6, staff_info[staff_member]["shift"]]
 
 # Fairness penalty weight
-  # Adjust this based on the scale of other components in your objective function - see slider
+# Adjust this based on the scale of other components in your objective function - see slider
 
 # Apply fairness penalty
 max_weekends_worked = pulp.lpSum([weekends_worked[staff_member] for staff_member in staff_info])
@@ -335,3 +329,40 @@ df_pivot.fillna('', inplace=True)
 
 df_pivot.to_excel("Staff_Shift_Schedule_2024.xlsx", index=False)
 
+def plot_staff_schedule(df_long, output_file_path):
+    # Example usage:
+    # Assuming df_long is your DataFrame after filtering out 'Off' days
+    # plot_staff_schedule(df_long, 'path/to/your/staff_schedule.png')
+    """
+    Plots a staff schedule scatter plot.
+
+    Parameters:
+    df_long (DataFrame): A pandas DataFrame with columns 'Staff Member', 'Date', and 'Shift Worked'.
+    output_file_path (str): The file path to save the output plot.
+
+    Returns:
+    None
+    """
+    # Pivot the table for plotting
+    df_pivot = df_long.pivot(index='Staff Member', columns='Date', values='Shift Worked')
+
+    # Plotting
+    plt.figure(figsize=(20, 10))
+    sns.scatterplot(data=df_long, x='Date', y='Staff Member', hue='Shift Worked', s=100, palette='tab10', legend='full')
+
+    # Customize the axes and legend
+    plt.yticks(range(len(df_pivot.index)), df_pivot.index)
+    plt.gca().invert_yaxis()  # Invert y axis so that the top staff member is at the top
+    plt.xlabel('Date')
+    plt.title('Staff Shift Schedule')
+    plt.legend(title='Shifts', bbox_to_anchor=(1.05, 1), loc='upper left')
+    plt.grid(True, which='major', linestyle='--', linewidth=0.5)
+    plt.tight_layout()
+
+    # Save the plot as a PNG file
+    plt.savefig(output_file_path, bbox_inches='tight')
+    plt.close()  # Close the figure
+
+
+
+plot_staff_schedule(df_long, 'staff_schedule.png')
