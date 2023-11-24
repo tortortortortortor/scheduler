@@ -396,19 +396,8 @@ class HealthcareSchedule:
         return df
 
     def plot_staff_schedule(self, df_long, output_file_path):
-        # Example usage:
-        # Assuming df_long is your DataFrame after filtering out 'Off' days
-        # plot_staff_schedule(df_long, 'path/to/your/staff_schedule.png')
-        """
-        Plots a staff schedule scatter plot.
-
-        Parameters:
-        df_long (DataFrame): A pandas DataFrame with columns 'Staff Member', 'Date', and 'Shift Worked'.
-        output_file_path (str): The file path to save the output plot.
-
-        Returns:
-        None
-        """
+        # Check DataFrame format
+        assert 'Staff' in df_long and 'Date' in df_long and 'Shift' in df_long, "DataFrame must have 'Staff', 'Date', and 'Shift' columns"
 
         # Suppress font-related warnings
         warnings.filterwarnings("ignore", category=UserWarning, message="Glyph .* missing from current font")
@@ -417,21 +406,18 @@ class HealthcareSchedule:
         legend_labels = {'D1': 'D1', 'D2': 'D2', 'Mx': 'Mx', 'Night': 'Night'}
         legend_colors = {'D1': 'blue', 'D2': 'green', 'Mx': 'orange', 'Night': 'purple'}
 
-        # Create a custom legend based on shift types
-        custom_legend = [plt.Line2D([0], [0], marker='o', color='w', label=legend_labels[shift], 
-                                    markersize=10, markerfacecolor=legend_colors[shift]) for shift in legend_labels]
-
-        # Pivot the table for plotting using pivot_table
-        df_pivot = df_long.pivot_table(index='Staff', columns='Date', values='Shift', aggfunc='first')
+        # Create a custom legend
+        custom_legend = [plt.Line2D([0], [0], marker='o', color='w', label=legend_labels[shift], markersize=10, markerfacecolor=legend_colors[shift]) for shift in legend_labels]
 
         # Plotting
         plt.figure(figsize=(20, 10))
         sns.scatterplot(data=df_long, x='Date', y='Staff', hue='Shift', s=100, palette=legend_colors, legend='full')
 
         # Customize the axes
-        plt.yticks(range(len(df_pivot.index)), df_pivot.index)
+        plt.yticks(range(len(df_long['Staff'].unique())), df_long['Staff'].unique())
         plt.gca().invert_yaxis()  # Invert y axis so that the top staff member is at the top
         plt.xlabel('Date')
+        plt.ylabel('Staff')
         plt.title('Staff Shift Schedule')
 
         # Add the custom legend
