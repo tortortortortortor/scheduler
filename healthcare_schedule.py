@@ -3,6 +3,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import datetime
+import warnings
+
 
 class HealthcareSchedule:
     def __init__(self, num_weeks, days_per_week, staff_info, shift_hours):
@@ -360,8 +362,7 @@ class HealthcareSchedule:
 
         self.plot_staff_schedule(df_schedule, 'staff_schedule.png')
         # Plot the schedule
-        # This function would plot the schedule
-        pass # for now
+       # self.save_schedule_to_excel(df_schedule, 'staff_schedule.xlsx')
 
     def create_schedule_dataframe(self):
         schedule_data = []
@@ -395,6 +396,9 @@ class HealthcareSchedule:
         None
         """
 
+        # Suppress font-related warnings
+        warnings.filterwarnings("ignore", category=UserWarning, message="Glyph .* missing from current font")
+
         # Define custom legend labels and colors
         legend_labels = {'D1': 'D1', 'D2': 'D2', 'Mx': 'Mx', 'Night': 'Night'}
         legend_colors = {'D1': 'blue', 'D2': 'green', 'Mx': 'orange', 'Night': 'purple'}
@@ -426,6 +430,31 @@ class HealthcareSchedule:
         plt.savefig(output_file_path, bbox_inches='tight')
         plt.close()  # Close the figure
 
+    def save_schedule_to_excel(self, df, output_file_path):
+        # Modify the id_vars to match your column names
+        id_vars = ['Staff', 'Shift']  # Update with actual column names
+
+        # Melt the DataFrame to long format
+        df_long = df.melt(id_vars=id_vars, 
+                        var_name='Date', 
+                        value_name='Shift Worked')
+
+        # Filter out 'Off' days for clarity in the plot
+        df_long = df_long[df_long['Shift Worked'] != 'Off']
+
+        # Pivot the long format DataFrame to a wide format
+        df_pivot = df_long.pivot(index='Staff', columns='Date', values='Shift Worked')
+
+        # Reset the index to make 'Staff' a column again
+        df_pivot.reset_index(inplace=True)
+
+        # Fill NaN values with an empty string or a placeholder if needed
+        df_pivot.fillna('', inplace=True)
+
+        # Save the pivoted DataFrame to an Excel file
+        df_pivot.to_excel(output_file_path, index=False)
+
+        print(f"DataFrame has been saved to {output_file_path}")
     
     def _compile_objective_function(self):
         self.problem += pulp.lpSum(self.objective_function_components)
