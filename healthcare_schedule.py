@@ -355,18 +355,67 @@ class HealthcareSchedule:
 
 
     def plot_schedule(self):
-        # Assuming we have a DataFrame df_long with the schedule data
+        # Create the DataFrame
+        df_schedule = self.create_schedule_dataframe()
+
+        self.plot_staff_schedule(df_schedule, 'staff_schedule.png')
+        # Plot the schedule
         # This function would plot the schedule
         pass # for now
 
     def create_schedule_dataframe(self):
-        # This function would convert the solution into a DataFrame
-        # Return a DataFrame similar to df_long from earlier examples
-        pass # for nwo
+        schedule_data = []
+        start_date = datetime.date(2024, 1, 1)
 
-    def plot_schedule_from_dataframe(self, df_long):
-        # Function to plot the schedule
-        pass # for now
+        for staff_member in self.staff_info:
+            for week in range(self.num_weeks):
+                for day in range(self.days_per_week):
+                    for shift_type in self.shift_hours:
+                        shift_value = pulp.value(self.shifts[staff_member, week, day, shift_type])
+                        if shift_value is not None and shift_value == 1:
+                            date = start_date + datetime.timedelta(days=7 * week + day)
+                            schedule_data.append([staff_member, date, shift_type])
+
+        df = pd.DataFrame(schedule_data, columns=['Staff', 'Date', 'Shift'])
+        
+        return df
+
+    def plot_staff_schedule(self, df_long, output_file_path):
+        # Example usage:
+        # Assuming df_long is your DataFrame after filtering out 'Off' days
+        # plot_staff_schedule(df_long, 'path/to/your/staff_schedule.png')
+        """
+        Plots a staff schedule scatter plot.
+
+        Parameters:
+        df_long (DataFrame): A pandas DataFrame with columns 'Staff Member', 'Date', and 'Shift Worked'.
+        output_file_path (str): The file path to save the output plot.
+
+        Returns:
+        None
+        """
+
+        print(df_long.columns)
+
+        df_pivot = df_long.pivot_table(index='Staff', columns='Date', values='Shift', aggfunc='first')
+
+        # Plotting
+        plt.figure(figsize=(20, 10))
+        sns.scatterplot(data=df_long, x='Date', y='Staff', hue='Shift', s=100, palette='tab10', legend='full')
+
+        # Customize the axes and legend
+        plt.yticks(range(len(df_pivot.index)), df_pivot.index)
+        plt.gca().invert_yaxis()  # Invert y axis so that the top staff member is at the top
+        plt.xlabel('Date')
+        plt.title('Staff Shift Schedule')
+        plt.legend(title='Shifts', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.grid(True, which='major', linestyle='--', linewidth=0.5)
+        plt.tight_layout()
+
+        # Save the plot as a PNG file
+        plt.savefig(output_file_path, bbox_inches='tight')
+        plt.close()  # Close the figure
+
     
     def _compile_objective_function(self):
         self.problem += pulp.lpSum(self.objective_function_components)

@@ -33,6 +33,7 @@ def main():
     schedule.set_objective()
     schedule.solve()
     schedule.generate_report()
+    schedule.plot_schedule()
 
 if __name__ == "__main__":
     main()
