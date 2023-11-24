@@ -1,4 +1,8 @@
 import pulp
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import datetime
 
 class HealthcareSchedule:
     def __init__(self, num_weeks, days_per_week, staff_info, shift_hours):
@@ -9,6 +13,7 @@ class HealthcareSchedule:
         self.problem = pulp.LpProblem("Healthcare_Scheduling", pulp.LpMaximize)
         self.shifts = None
         self.objective_function_components = []  # Initialize the list to store objective function components
+        self.MAX_HOURS_FULL_TIME = 1622  # Maximum hours for full time staff per year
         self.initialize_variables()
 
     def initialize_variables(self):
@@ -34,8 +39,51 @@ class HealthcareSchedule:
 
 
     def _add_work_hours_constraints(self):
-        # Implementation of work hours constraints
-        pass
+        # Constants
+        MAX_HOURS_FULL_TIME = 1622
+        TOLERANCE = 0.05  # 5%
+        MAX_HOURS_NIGHT_SHIFT = 2000  # Increased maximum hours for night shift workers
+        NIGHT_SHIFT_TOLERANCE = 0.20  # Increased tolerance for night shift workers
+
+        # Lower and upper bounds for full-time and night shift full-time
+        lower_bound_full_time = MAX_HOURS_FULL_TIME * (1 - TOLERANCE)
+        upper_bound_full_time = MAX_HOURS_FULL_TIME * (1 + TOLERANCE)
+        lower_bound_night_shift = MAX_HOURS_NIGHT_SHIFT * (1 - NIGHT_SHIFT_TOLERANCE)
+        upper_bound_night_shift = MAX_HOURS_NIGHT_SHIFT * (1 + NIGHT_SHIFT_TOLERANCE)
+
+        for staff_member, info in self.staff_info.items():
+            work_percentage = info["work_percentage"] / 100
+
+            # Determine max and min hours based on shift type
+            if info["shift"] == "Night":
+                max_hours = upper_bound_night_shift * work_percentage
+                min_hours = lower_bound_night_shift * work_percentage
+            else:
+                max_hours = upper_bound_full_time * work_percentage
+                min_hours = lower_bound_full_time * work_percentage
+
+            # Calculate total hours for each staff member
+            staff_hours = pulp.lpSum(self.shifts[staff_member, week, day, shift_type] * self.shift_hours[shift_type]
+                                     for week in range(self.num_weeks)
+                                     for day in range(self.days_per_week)
+                                     for shift_type in self.shift_hours if shift_type in info["shift"])
+
+            # Apply constraints for maximum and minimum hours
+            self.problem += (staff_hours <= max_hours)
+            self.problem += (staff_hours >= min_hours)
+
+            # Enforce that non-night workers cannot be assigned to night shifts
+            if info["shift"] != "Night":
+                for week in range(self.num_weeks):
+                    for day in range(self.days_per_week):
+                        self.problem += (self.shifts[staff_member, week, day, "Night"] == 0)
+
+            # Enforce that night workers cannot be assigned to day shifts
+            else:
+                for week in range(self.num_weeks):
+                    for day in range(self.days_per_week):
+                        for day_shift in ["D1", "D2", "Mx"]:
+                            self.problem += (self.shifts[staff_member, week, day, day_shift] == 0)
 
     def _add_isolated_day_constraints(self):
         isolated_day_penalty_weight = 100
@@ -97,8 +145,6 @@ class HealthcareSchedule:
         # Set the objective function
         self.problem += pulp.lpSum(self.objective_function_components), "Total Objective Function"
 
-        pass
-
     def solve(self):
         # Solve the LP problem and handle the solution
         # Use PuLP's solver to solve the problem
@@ -111,11 +157,78 @@ class HealthcareSchedule:
         else:
             print("No optimal solution found. Please check the problem constraints.")
 
-        pass
-
     def generate_report(self):
-        # Generate a report of the solution
-        pass
+        # Check the status of the solution and print the schedule
+        if self.problem.status == pulp.LpStatusOptimal:
+            print("An optimal solution was found.\n")
+            # Generate textual report as shown in your example
+         #   self.debugVariables()
+            self.generate_textreport()
+        else:
+            print("No optimal solution found. Will not generate a report.")
+
+    def debugVariables(self):
+        for variable in self.problem.variables():
+            print(f"{variable.name} = {variable.varValue}")
+
+    def generate_textreport(self):
+        # Check the status of the solution and print the schedule
+        if self.problem.status == pulp.LpStatusOptimal:
+            print("An optimal solution was found.\n")
+
+            total_hours_all_staff = 0
+            overworked_staff = []
+            underworked_staff = []
+
+            # Calculate and print the hours worked per week per employee
+            for staff_member, info in self.staff_info.items():
+                total_hours_staff_member = 0
+                expected_hours = (info['work_percentage'] / 100) * self.MAX_HOURS_FULL_TIME
+                print(f"Hours worked by {staff_member} (Expected: {expected_hours}):")
+
+                for week in range(self.num_weeks):
+                    weekly_hours = 0  # Initialize weekly_hours here before it's used
+                    for day in range(self.days_per_week):
+                        for shift_type in self.shift_hours:
+                            shift_value = pulp.value(self.shifts[staff_member, week, day, shift_type])
+                            if shift_value is not None:  # Check if the shift_value is not None
+                                weekly_hours += shift_value * self.shift_hours[shift_type]
+                    total_hours_staff_member += weekly_hours
+
+                discrepancy = total_hours_staff_member - expected_hours
+                if discrepancy > 0:
+                    print(f"Total hours worked by {staff_member}: {total_hours_staff_member} hours (Needs {discrepancy} fewer hours)\n")
+                    overworked_staff.append((staff_member, discrepancy))
+                else:
+                    print(f"Total hours worked by {staff_member}: {total_hours_staff_member} hours (Needs {-discrepancy} more hours)\n")
+                    underworked_staff.append((staff_member, -discrepancy))
+
+                total_hours_all_staff += total_hours_staff_member
+
+            print(f"Total hours worked by all staff: {total_hours_all_staff} hours\n")
+
+            # Suggest swaps
+            print("Suggested Swaps:")
+            for overworked in overworked_staff:
+                for underworked in underworked_staff:
+                    print(f"{overworked[0]} (Overworked by {overworked[1]} hours) can swap with {underworked[0]} (Underworked by {underworked[1]} hours)")
+        else:
+            print("No optimal solution found. Please check the problem constraints.")
+
+
+    def plot_schedule(self):
+        # Assuming we have a DataFrame df_long with the schedule data
+        # This function would plot the schedule
+        pass # for now
+
+    def create_schedule_dataframe(self):
+        # This function would convert the solution into a DataFrame
+        # Return a DataFrame similar to df_long from earlier examples
+        pass # for nwo
+
+    def plot_schedule_from_dataframe(self, df_long):
+        # Function to plot the schedule
+        pass # for now
     
     def _compile_objective_function(self):
         self.problem += pulp.lpSum(self.objective_function_components)
