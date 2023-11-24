@@ -35,8 +35,38 @@ class HealthcareSchedule:
         self._add_weekend_work_constraints()
         self._add_shift_type_constraints()
         self._add_max_days_worked_constraints()
+        self._add_max_consecutive_days_worked_constraints()
         # ... other constraints
         self._compile_objective_function()
+
+    def _add_max_consecutive_days_worked_constraints(self):
+        max_consecutive_days = 7  # Maximum number of consecutive days a staff member can work
+        for staff_member in self.staff_info:
+            for week in range(self.num_weeks):
+                for start_day in range(self.days_per_week):
+                    # Calculate the end day and adjust for week transition
+                    end_day = start_day + max_consecutive_days
+                    if end_day > self.days_per_week:
+                        # Window spans two weeks
+                        days_in_current_week = self.days_per_week - start_day
+                        days_in_next_week = end_day - self.days_per_week
+                        next_week = (week + 1) % self.num_weeks
+
+                        # Sum shifts across the 7-day window spanning two weeks
+                        shift_sum = pulp.lpSum(self.shifts[staff_member, week, day, shift_type] 
+                                               for day in range(start_day, self.days_per_week)
+                                               for shift_type in self.shift_hours) + \
+                                    pulp.lpSum(self.shifts[staff_member, next_week, day, shift_type] 
+                                               for day in range(days_in_next_week)
+                                               for shift_type in self.shift_hours)
+                    else:
+                        # Window within a single week
+                        shift_sum = pulp.lpSum(self.shifts[staff_member, week, day, shift_type] 
+                                               for day in range(start_day, end_day)
+                                               for shift_type in self.shift_hours)
+
+                    # Apply the constraint
+                    self.problem += (shift_sum <= max_consecutive_days, f"Max_Consecutive_Days_{staff_member}_Week{week}_StartDay{start_day}")
 
     # This constraint will try to set the maximum number of days worked in a 7-day period
     def _add_max_days_worked_constraints(self):
