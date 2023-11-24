@@ -584,6 +584,7 @@ class HealthcareSchedule:
         y_labels = {staff: i for i, staff in enumerate(df_long['Staff'].unique())}
 
         # Iterate through each staff member and draw lines for gaps greater than 5 days
+        # Iterate through each staff member and draw lines for gaps greater than 5 days
         for staff_member in df_long['Staff'].unique():
             staff_dates = df_long[df_long['Staff'] == staff_member]['Date'].drop_duplicates()
             sorted_dates = sorted(mdates.date2num(staff_dates))  # Convert to Matplotlib date format and sort
@@ -591,7 +592,7 @@ class HealthcareSchedule:
             for i in range(len(sorted_dates) - 1):
                 current_date = sorted_dates[i]
                 next_date = sorted_dates[i + 1]
-                gap = next_date - current_date
+                gap = int(next_date - current_date)  # Convert gap to integer to remove decimals
 
                 if gap > 5:
                     # Coordinates for the start and end points of the line
@@ -604,7 +605,8 @@ class HealthcareSchedule:
 
                     # Annotate the line with the gap, adjusting y_value as needed
                     mid_point = (start_point[0] + (end_point[0] - start_point[0]) / 2, y_value)
-                    ax.text(mid_point[0], mid_point[1] + 0.1, f"{gap}d", ha='center', va='bottom', fontsize=8, color='black')
+                    fontweight = 'bold' if gap > 14 else 'normal'
+                    ax.text(mid_point[0], mid_point[1] + 0.1, f"{gap}d", ha='center', va='bottom', fontsize=8, color='black', fontweight=fontweight)
 
             
         plt.xlabel('Date')
