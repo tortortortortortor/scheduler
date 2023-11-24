@@ -31,24 +31,38 @@ class HealthcareSchedule:
         }
 
     def add_constraints(self):
-        # Add various constraints
-        self._add_work_hours_constraints(0.04, 0.20)
-        self._add_isolated_day_constraints()
-        self._add_weekend_work_constraints()
-        self._add_shift_type_constraints()
-        self._add_max_days_worked_constraints()
-        self._add_max_consecutive_days_worked_constraints()
-        self._add_role_specific_shift_constraints()
-        self._add_shift_distribution_objective()
-        self._add_pref_consecutive_days_constraints()
+        # Add various constraints 
 
-        # ... other constraints
+        # Constraints for day and nightworkers in percentage (0.04 menas % variance)
+        self._add_work_hours_constraints(0.16, 0.25)
+        
+        # Constraints for isolated work days and off days, penatly as input
+        self._add_isolated_day_constraints(100)
+
+        # Constraints for (i.e not to many)
+        self._add_weekend_work_constraints()
+
+        # THis is a must have constraint
+        self._add_shift_type_constraints()
+
+        # I.e max 4 days in a 7 day period a D1 can work
+   #     self._add_max_days_worked_constraints(4)
+
+     #   self._add_max_consecutive_days_worked_constraints()
+     #   self._add_role_specific_shift_constraints()
+
+        # Constraints for shift distribution and consecutive days, penatly as input
+     #   self._add_shift_distribution_objective(0.0000001)
+
+        # Constraints for consecutive days, penatly as input
+     #   self._add_pref_consecutive_days_constraints(0.0000000001)
+
         
         #  self._add_weekend_fairness_constraint()
         self._compile_objective_function()
     
     # Prefer to assign staff members to their preffered shift lengt    
-    def _add_pref_consecutive_days_constraints(self, penalty_weight=0.0000000001):
+    def _add_pref_consecutive_days_constraints(self, penalty_weight):
         for staff_member, info in self.staff_info.items():
             pref_consecutive_days = info["pref_consecutive_days"]
 
@@ -104,7 +118,7 @@ class HealthcareSchedule:
                     self.problem += (shift_sum <= max_consecutive_days, f"Max_Consecutive_Days_{staff_member}_Week{week}_StartDay{start_day}")
 
     # Tries to evenly distribute shifts
-    def _add_shift_distribution_objective(self, penalty_weight=0.0000001):
+    def _add_shift_distribution_objective(self, penalty_weight):
         # Calculate total shifts for each staff member
         total_shift_count = {
             staff_member: pulp.lpSum(
@@ -132,8 +146,7 @@ class HealthcareSchedule:
             self.objective_function_components.append(penalty_weight * shift_diff_vars[staff_member])
 
     # This constraint will try to set the maximum number of days worked in a 7-day period
-    def _add_max_days_worked_constraints(self):
-        max_days_in_7 = 4  # Relaxing the constraint to 4 days in a 7-day period
+    def _add_max_days_worked_constraints(self, max_days_in_7):
 
         for staff_member, info in self.staff_info.items():
             if info["shift"] == "D1":
@@ -237,7 +250,7 @@ class HealthcareSchedule:
                             self.problem += (self.shifts[staff_member, week, day, day_shift] == 0)
 
     # Tries to reduce isolated work days and off days
-    def _add_isolated_day_constraints(self, isolated_day_penalty_weight=100):
+    def _add_isolated_day_constraints(self, isolated_day_penalty_weight):
         self.isolated_work_vars = {}
         self.isolated_off_vars = {}
 
@@ -432,6 +445,28 @@ class HealthcareSchedule:
         for variable in self.problem.variables():
             print(f"{variable.name} = {variable.varValue}")
 
+    def calculateHours(self):
+        if self.problem.status != pulp.LpStatusOptimal:
+            print("No optimal solution found. Please check the problem constraints.")
+            return None
+
+        total_hours_all_staff = 0
+        staff_hours_worked = {}  # Dictionary to hold total hours worked for each staff member
+
+        for staff_member, info in self.staff_info.items():
+            total_hours_staff_member = 0
+            expected_hours = (info['work_percentage'] / 100) * self.MAX_HOURS_FULL_TIME
+
+            for week in range(self.num_weeks):
+                weekly_hours = sum(pulp.value(self.shifts[staff_member, week, day, shift_type]) * self.shift_hours[shift_type]
+                                for day in range(self.days_per_week)
+                                for shift_type in self.shift_hours)
+                total_hours_staff_member += weekly_hours
+
+            staff_hours_worked[staff_member] = total_hours_staff_member
+            total_hours_all_staff += total_hours_staff_member
+        return staff_hours_worked
+
     def generate_textreport(self):
         # Check the status of the solution and print the schedule
         if self.problem.status == pulp.LpStatusOptimal:
@@ -502,6 +537,9 @@ class HealthcareSchedule:
         return df
 
     def plot_staff_schedule(self, df_long):
+        staff_hours_worked = self.calculateHours()  # Get hours worked for each staff member
+        if staff_hours_worked is None:
+            return  # Exit if no optimal solution was found
 
         # Generate a timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -520,19 +558,38 @@ class HealthcareSchedule:
         # Create a custom legend
         custom_legend = [plt.Line2D([0], [0], marker='o', color='w', label=legend_labels[shift], markersize=10, markerfacecolor=legend_colors[shift]) for shift in legend_labels]
 
+
         # Plotting
         plt.figure(figsize=(20, 10))
-        sns.scatterplot(data=df_long, x='Date', y='Staff', hue='Shift', s=100, palette=legend_colors, legend='full')
+        ax = sns.scatterplot(data=df_long, x='Date', y='Staff', hue='Shift', s=100, palette=legend_colors, legend='full')
 
         # Customize the axes
-        plt.yticks(range(len(df_long['Staff'].unique())), df_long['Staff'].unique())
-        plt.gca().invert_yaxis()  # Invert y axis so that the top staff member is at the top
+        staff_list = df_long['Staff'].unique()
+        plt.yticks(range(len(staff_list)), staff_list)
+        ax.invert_yaxis()  # Invert y axis so that the top staff member is at the top
+
+        # Add hours worked as annotations
+        # Add hours worked as annotations
+        for i, staff_member in enumerate(staff_list):
+            total_hours_worked = staff_hours_worked.get(staff_member, 0)
+            max_hours_allowed = self.staff_info[staff_member]['work_percentage'] / 100 * self.MAX_HOURS_FULL_TIME
+            # Format to limit to one decimal place
+            hours_text = f"{total_hours_worked:.1f}/{max_hours_allowed:.1f} hrs"
+            
+            # Subtract from the x position to move the text further to the left
+            x_offset = pd.Timedelta(days=15)  # Adjust as needed for your plot scale
+            y_position = i - 0.10  # Adjust this value to move the text up by a small fraction
+            
+            ax.text(df_long['Date'].min() - x_offset, y_position, hours_text, verticalalignment='top', fontsize=10, color='black')
+
+
+            
         plt.xlabel('Date')
         plt.ylabel('Staff')
         plt.title('Staff Shift Schedule')
 
         # Add the custom legend
-        plt.legend(handles=custom_legend, title='Shifts', bbox_to_anchor=(1.05, 1), loc='upper left')
+        plt.legend(handles=custom_legend, title='Shifts', bbox_to_anchor=(1.15, 1), loc='upper left')
 
         plt.grid(True, which='major', linestyle='--', linewidth=0.5)
         plt.tight_layout()
@@ -540,6 +597,7 @@ class HealthcareSchedule:
         # Save the plot as a PNG file
         plt.savefig(output_file_path, bbox_inches='tight')
         plt.close()  # Close the figure
+
 
     def export_schedule_to_excel(self, output_file_path):
         """
