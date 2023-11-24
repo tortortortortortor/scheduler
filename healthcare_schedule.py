@@ -27,6 +27,8 @@ class HealthcareSchedule:
         # Add various constraints
         self._add_work_hours_constraints()
         self._add_isolated_day_constraints()
+        self._add_weekend_work_constraints()
+
         # ... other constraints
         self._compile_objective_function()
 
@@ -71,13 +73,44 @@ class HealthcareSchedule:
         # Add penalty for isolated days to the objective function
         self.objective_function_components.append(-penalty_weight * (isolated_work_var + isolated_off_var))
 
+    def _add_weekend_work_constraints(self):
+        # Initialize dictionary for weekend work variables
+        self.weekend_work_vars = {}
+
+        # Loop through staff members and weeks to create weekend work variables
+        for staff_member in self.staff_info:
+            for week in range(self.num_weeks):
+                self._add_single_weekend_work_constraint(staff_member, week)
+
+    def _add_single_weekend_work_constraint(self, staff_member, week):
+        # Create a binary variable to track if a staff member works on the weekend
+        weekend_work_var = pulp.LpVariable(f"weekend_work_{staff_member}_{week}", cat='Binary')
+        self.weekend_work_vars[(staff_member, week)] = weekend_work_var
+
+        # Add constraints for weekend work
+        # Assuming weekend is Saturday (5) and Sunday (6)
+        self.problem += weekend_work_var >= self.shifts[staff_member, week, 5, self.staff_info[staff_member]["shift"]]
+        self.problem += weekend_work_var >= self.shifts[staff_member, week, 6, self.staff_info[staff_member]["shift"]]
+
 
     def set_objective(self):
         # Set the objective function
+        self.problem += pulp.lpSum(self.objective_function_components), "Total Objective Function"
+
         pass
 
     def solve(self):
         # Solve the LP problem and handle the solution
+        # Use PuLP's solver to solve the problem
+        solver = pulp.PULP_CBC_CMD(msg=1, threads=8, maxSeconds=300)
+        self.problem.solve(solver)
+
+        # Check if an optimal solution was found
+        if self.problem.status == pulp.LpStatusOptimal:
+            print("An optimal solution was found.")
+        else:
+            print("No optimal solution found. Please check the problem constraints.")
+
         pass
 
     def generate_report(self):
