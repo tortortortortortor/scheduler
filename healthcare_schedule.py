@@ -39,11 +39,11 @@ class HealthcareSchedule:
         self._add_max_days_worked_constraints()
         self._add_max_consecutive_days_worked_constraints()
         self._add_role_specific_shift_constraints()
+        self._add_shift_distribution_objective()
+
         # ... other constraints
         
         #  self._add_weekend_fairness_constraint()
-
-
         self._compile_objective_function()
 
     def _add_max_consecutive_days_worked_constraints(self):
@@ -74,6 +74,34 @@ class HealthcareSchedule:
 
                     # Apply the constraint
                     self.problem += (shift_sum <= max_consecutive_days, f"Max_Consecutive_Days_{staff_member}_Week{week}_StartDay{start_day}")
+
+    # Tries to evenly distribute shifts
+    def _add_shift_distribution_objective(self, penalty_weight=0.0000001):
+        # Calculate total shifts for each staff member
+        total_shift_count = {
+            staff_member: pulp.lpSum(
+                self.shifts[staff_member, week, day, shift_type]
+                for week in range(self.num_weeks)
+                for day in range(self.days_per_week)
+                for shift_type in self.shift_hours
+            ) for staff_member in self.staff_info
+        }
+
+        # Calculate the average shift count
+        avg_shift_count = pulp.lpSum(total_shift_count.values()) / len(total_shift_count)
+
+        # Auxiliary variables for differences
+        shift_diff_vars = {staff_member: pulp.LpVariable(f"shift_diff_{staff_member}", lowBound=0)
+                        for staff_member in total_shift_count}
+
+        # Add objectives to minimize the absolute differences from the average
+        for staff_member in total_shift_count:
+            # Constraints to calculate the absolute difference
+            self.problem += shift_diff_vars[staff_member] >= total_shift_count[staff_member] - avg_shift_count
+            self.problem += shift_diff_vars[staff_member] >= avg_shift_count - total_shift_count[staff_member]
+
+            # Add the absolute difference with a penalty weight to the objective function components
+            self.objective_function_components.append(penalty_weight * shift_diff_vars[staff_member])
 
     # This constraint will try to set the maximum number of days worked in a 7-day period
     def _add_max_days_worked_constraints(self):
@@ -374,7 +402,7 @@ class HealthcareSchedule:
         # Create the DataFrame
         df_schedule = self.create_schedule_dataframe()
 
-        self.plot_staff_schedule(df_schedule, 'staff_schedule.png')
+        self.plot_staff_schedule(df_schedule)
         # Plot the schedule
        # self.save_schedule_to_excel(df_schedule, 'staff_schedule.xlsx')
 
@@ -395,7 +423,12 @@ class HealthcareSchedule:
         
         return df
 
-    def plot_staff_schedule(self, df_long, output_file_path):
+    def plot_staff_schedule(self, df_long):
+
+        # Generate a timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file_path = f'staff_schedule_{timestamp}.png'
+
         # Check DataFrame format
         assert 'Staff' in df_long and 'Date' in df_long and 'Shift' in df_long, "DataFrame must have 'Staff', 'Date', and 'Shift' columns"
 
