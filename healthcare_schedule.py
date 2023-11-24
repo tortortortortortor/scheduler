@@ -37,7 +37,8 @@ class HealthcareSchedule:
         self._add_max_days_worked_constraints()
         self._add_max_consecutive_days_worked_constraints()
         # ... other constraints
-      #  self._add_weekend_fairness_constraint()
+        
+        #  self._add_weekend_fairness_constraint()
 
 
         self._compile_objective_function()
