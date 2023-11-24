@@ -46,17 +46,16 @@ class HealthcareSchedule:
         self._add_shift_type_constraints()
 
         # I.e max 4 days in a 7 day period a D1 can work
-   #     self._add_max_days_worked_constraints(4)
+        self._add_max_days_worked_constraints(4)
 
-     #   self._add_max_consecutive_days_worked_constraints()
-     #   self._add_role_specific_shift_constraints()
+        #   self._add_max_consecutive_days_worked_constraints()
+        self._add_role_specific_shift_constraints()
 
         # Constraints for shift distribution and consecutive days, penatly as input
-     #   self._add_shift_distribution_objective(0.0000001)
+        self._add_shift_distribution_objective(0.0000001)
 
         # Constraints for consecutive days, penatly as input
-     #   self._add_pref_consecutive_days_constraints(0.0000000001)
-
+        # self._add_pref_consecutive_days_constraints(0.0000000001)
         
         #  self._add_weekend_fairness_constraint()
         self._compile_objective_function()
@@ -347,7 +346,7 @@ class HealthcareSchedule:
     def solve(self):
         # Solve the LP problem and handle the solution
         # Use PuLP's solver to solve the problem
-        solver = pulp.PULP_CBC_CMD(msg=1, threads=32, maxSeconds=300)
+        solver = pulp.PULP_CBC_CMD(msg=1, maxSeconds=60)
         self.problem.solve(solver)
 
         # Check if an optimal solution was found
