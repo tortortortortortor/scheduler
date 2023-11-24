@@ -34,6 +34,7 @@ def main():
     schedule.solve()
     schedule.generate_report()
     schedule.plot_schedule()
+    schedule.export_schedule_to_excel("Staff_Shift_Schedule_2024.xlsx")
 
 if __name__ == "__main__":
     main()

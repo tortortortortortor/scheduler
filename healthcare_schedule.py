@@ -430,31 +430,49 @@ class HealthcareSchedule:
         plt.savefig(output_file_path, bbox_inches='tight')
         plt.close()  # Close the figure
 
-    def save_schedule_to_excel(self, df, output_file_path):
-        # Modify the id_vars to match your column names
-        id_vars = ['Staff', 'Shift']  # Update with actual column names
+    def export_schedule_to_excel(self, output_file_path):
+        """
+        Exports the schedule data to an Excel file.
 
-        # Melt the DataFrame to long format
-        df_long = df.melt(id_vars=id_vars, 
-                        var_name='Date', 
-                        value_name='Shift Worked')
+        Parameters:
+        output_file_path (str): The file path to save the output Excel file.
 
-        # Filter out 'Off' days for clarity in the plot
-        df_long = df_long[df_long['Shift Worked'] != 'Off']
+        Returns:
+        None
+        """
 
-        # Pivot the long format DataFrame to a wide format
-        df_pivot = df_long.pivot(index='Staff', columns='Date', values='Shift Worked')
+        # Constants
+        start_date = datetime.datetime(2024, 1, 1)
 
-        # Reset the index to make 'Staff' a column again
-        df_pivot.reset_index(inplace=True)
+        # Prepare the header
+        header = ['Staff Member', 'Shift', 'Total Hours']
+        dates = [start_date + datetime.timedelta(days=week * self.days_per_week + day) 
+                 for week in range(self.num_weeks) 
+                 for day in range(self.days_per_week)]
+        date_headers = [date.strftime('%Y-%m-%d') for date in dates]
+        header.extend(date_headers)
 
-        # Fill NaN values with an empty string or a placeholder if needed
-        df_pivot.fillna('', inplace=True)
+        # Prepare the data for each staff member
+        data = []
+        for staff_member, info in self.staff_info.items():
+            total_hours = sum(pulp.value(self.shifts[staff_member, week, day, shift_type]) * self.shift_hours[shift_type]
+                              for week in range(self.num_weeks)
+                              for day in range(self.days_per_week)
+                              for shift_type in self.shift_hours)
+            row = [staff_member, info['shift'], total_hours]
+            for week in range(self.num_weeks):
+                for day in range(self.days_per_week):
+                    shift_worked = next((shift_type for shift_type in self.shift_hours 
+                                         if pulp.value(self.shifts[staff_member, week, day, shift_type]) == 1), 'Off')
+                    row.append(shift_worked)
+            data.append(row)
 
-        # Save the pivoted DataFrame to an Excel file
-        df_pivot.to_excel(output_file_path, index=False)
+        # Create a DataFrame
+        df = pd.DataFrame(data, columns=header)
 
-        print(f"DataFrame has been saved to {output_file_path}")
+        # Export to Excel
+        df.to_excel(output_file_path, index=False)
+        print(f"Schedule exported to {output_file_path}")
     
     def _compile_objective_function(self):
         self.problem += pulp.lpSum(self.objective_function_components)
