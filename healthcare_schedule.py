@@ -496,7 +496,7 @@ class HealthcareSchedule:
             for week in range(self.num_weeks):
                 for day in range(self.days_per_week):
                     shift_worked = next((shift_type for shift_type in self.shift_hours 
-                                         if pulp.value(self.shifts[staff_member, week, day, shift_type]) == 1), 'Off')
+                                         if pulp.value(self.shifts[staff_member, week, day, shift_type]) == 1), ' ')
                     row.append(shift_worked)
             data.append(row)
 
