@@ -322,8 +322,55 @@ class HealthcareSchedule:
             #   self.debugVariables()
             self.generate_textreport()
             self.print_schedule()
+            self.suggest_improvements()
         else:
             print("No optimal solution found. Will not generate a report.")
+
+    def suggest_improvements(self):
+        """
+        Analyzes the current scheduling solution and suggests improvements.
+        """
+        print("Suggested Improvements:")
+        
+        # Calculate total expected hours for all staff
+        total_expected_hours = sum((info['work_percentage'] / 100) * self.MAX_HOURS_FULL_TIME for info in self.staff_info.values())
+
+        # Calculate total actual hours worked by all staff
+        total_actual_hours = sum(
+            sum(pulp.value(self.shifts[staff_member, week, day, shift_type]) * self.shift_hours[shift_type]
+                for week in range(self.num_weeks)
+                for day in range(self.days_per_week)
+                for shift_type in self.shift_hours)
+            for staff_member in self.staff_info
+        )
+
+        # Calculate the shortfall or excess in hours
+        hours_difference = total_actual_hours - total_expected_hours
+
+        # If there's a significant shortfall, suggest hiring more staff
+        if hours_difference < -100:  # Arbitrary threshold for significant shortfall
+            print("- Consider hiring additional staff to cover the shortfall of", -hours_difference, "hours.")
+
+        # If there's a significant excess, suggest reducing work percentages or reassigning tasks
+        elif hours_difference > 100:  # Arbitrary threshold for significant excess
+            print("- Consider reducing work percentages or reassigning tasks to manage the excess of", hours_difference, "hours.")
+
+        # Check for staff members who are significantly overworked or underworked
+        for staff_member, info in self.staff_info.items():
+            total_hours_staff_member = sum(
+                pulp.value(self.shifts[staff_member, week, day, shift_type]) * self.shift_hours[shift_type]
+                for week in range(self.num_weeks)
+                for day in range(self.days_per_week)
+                for shift_type in self.shift_hours
+            )
+            expected_hours = (info['work_percentage'] / 100) * self.MAX_HOURS_FULL_TIME
+            discrepancy = total_hours_staff_member - expected_hours
+
+            # Suggest adjustments for individual staff members
+            if discrepancy > 50:  # Threshold for considering someone as overworked
+                print(f"- {staff_member} is overworked by {discrepancy} hours. Consider reducing workload.")
+            elif discrepancy < -50:  # Threshold for considering someone as underworked
+                print(f"- {staff_member} is underworked by {-discrepancy} hours. Consider increasing workload or reassigning tasks.")
 
     def print_schedule(self):
             # Check the status of the solution and print the schedule
