@@ -33,10 +33,25 @@ class HealthcareSchedule:
         self._add_work_hours_constraints()
         self._add_isolated_day_constraints()
         self._add_weekend_work_constraints()
+        self._add_shift_type_constraints()
 
         # ... other constraints
         self._compile_objective_function()
 
+    def _add_shift_type_constraints(self):
+        for week in range(self.num_weeks):
+            for day in range(self.days_per_week):
+                # Ensure exactly one D1 shift per day
+                self.problem += pulp.lpSum(self.shifts[staff_member, week, day, "D1"] for staff_member in self.staff_info) == 1, f"One_D1_Shift_Week{week}_Day{day}"
+
+                # Ensure exactly one D2 shift per day
+                self.problem += pulp.lpSum(self.shifts[staff_member, week, day, "D2"] for staff_member in self.staff_info) == 1, f"One_D2_Shift_Week{week}_Day{day}"
+
+                # Ensure exactly one Mx shift per day
+                self.problem += pulp.lpSum(self.shifts[staff_member, week, day, "Mx"] for staff_member in self.staff_info) == 1, f"One_Mx_Shift_Week{week}_Day{day}"
+
+                # Ensure exactly one Night shift per day
+                self.problem += pulp.lpSum(self.shifts[staff_member, week, day, "Night"] for staff_member in self.staff_info) == 1, f"One_Night_Shift_Week{week}_Day{day}"
 
     def _add_work_hours_constraints(self):
         # Constants
