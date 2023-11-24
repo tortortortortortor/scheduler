@@ -17,6 +17,19 @@ staff_info = {
     "Siliva🌒": {"shift": "Night", "work_percentage": 66, "pref_consecutive_days": 4, "overtime_allowance_hrs": 150},
 }
 
+staff_info_ask2 = {
+    "Per    ": {"shift": "D1", "work_percentage": 100, "pref_consecutive_days": 3, "overtime_allowance_hrs": 20},
+    "Elin   ": {"shift": "D1", "work_percentage": 100, "pref_consecutive_days": 3, "overtime_allowance_hrs": 20},
+    "Rita   ": {"shift": "D1", "work_percentage": 100, "pref_consecutive_days": 7, "overtime_allowance_hrs": 20},
+    "Amir   ": {"shift": "D2", "work_percentage": 80, "pref_consecutive_days": 3, "overtime_allowance_hrs": 20},
+    "Tone-H ": {"shift": "Mx", "work_percentage": 50, "pref_consecutive_days": 4, "overtime_allowance_hrs": 20},
+    "J sigv ": {"shift": "Mx", "work_percentage": 60, "pref_consecutive_days": 5, "overtime_allowance_hrs": 20},
+    "Vidar  ": {"shift": "D2", "work_percentage": 70, "pref_consecutive_days": 7, "overtime_allowance_hrs": 20},
+    "jørge 🌒": {"shift": "Night", "work_percentage": 74, "pref_consecutive_days": 4, "overtime_allowance_hrs": 150},
+    "Monic 🌒": {"shift": "Night", "work_percentage": 74, "pref_consecutive_days": 4, "overtime_allowance_hrs": 150},
+    "Birg  🌒": {"shift": "Night", "work_percentage": 77, "pref_consecutive_days": 4, "overtime_allowance_hrs": 150},
+}
+
 # Define work hours for each shift type
 shift_hours = {
     "D1": 13,  # 0700 to 2000
@@ -33,8 +46,6 @@ def main():
     schedule.set_objective()
     schedule.solve()
     schedule.generate_report()
-    schedule.plot_schedule()
-    schedule.export_schedule_to_excel("Staff_Shift_Schedule_2024.xlsx")
 
 if __name__ == "__main__":
     main()

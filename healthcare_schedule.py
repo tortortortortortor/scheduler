@@ -352,6 +352,9 @@ class HealthcareSchedule:
             self.generate_textreport()
             self.print_schedule()
             self.suggest_improvements()
+            self.plot_schedule()
+            self.export_schedule_to_excel("Staff_Shift_Schedule_2024.xlsx")
+
         else:
             print("No optimal solution found. Will not generate a report.")
 
