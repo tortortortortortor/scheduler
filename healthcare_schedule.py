@@ -37,6 +37,9 @@ class HealthcareSchedule:
         self._add_max_days_worked_constraints()
         self._add_max_consecutive_days_worked_constraints()
         # ... other constraints
+      #  self._add_weekend_fairness_constraint()
+
+
         self._compile_objective_function()
 
     def _add_max_consecutive_days_worked_constraints(self):
@@ -214,8 +217,43 @@ class HealthcareSchedule:
         self.problem += weekend_work_var >= self.shifts[staff_member, week, 5, self.staff_info[staff_member]["shift"]]
         self.problem += weekend_work_var >= self.shifts[staff_member, week, 6, self.staff_info[staff_member]["shift"]]
 
+    def _add_weekend_fairness_constraint(self):
+        # Initialize auxiliary variables for max and min weekends worked
+        max_weekends_worked = pulp.LpVariable("max_weekends_worked", lowBound=0)
+        min_weekends_worked = pulp.LpVariable("min_weekends_worked", lowBound=0, upBound=self.num_weeks * 2)
+
+        # Track weekends worked for each staff member
+        weekends_worked = {
+            staff_member: pulp.lpSum(self.shifts[staff_member, week, day, shift_type] 
+                                     for week in range(self.num_weeks)
+                                     for day in [5, 6]  # Assuming 5 and 6 are weekend days
+                                     for shift_type in self.shift_hours)
+            for staff_member in self.staff_info
+        }
+
+        # Add constraints to link the auxiliary variables with the weekends worked
+        for staff_member, weekends in weekends_worked.items():
+            self.problem += max_weekends_worked >= weekends
+            self.problem += min_weekends_worked <= weekends
+
+        # Create an incremental penalty based on the range of unfairness
+        fairness_metric = max_weekends_worked - min_weekends_worked
+
+        # Define ranges for the incremental penalty
+        small_unfairness_penalty = 0.01  # Small penalty for minor differences
+        large_unfairness_penalty = 0.05  # Larger penalty for significant differences
+        unfairness_threshold = 2  # Threshold for considering the unfairness significant
+
+        # Add incremental penalty to the objective function
+        self.objective_function_components.append(
+            small_unfairness_penalty * fairness_metric
+        )
+
+        self.problem += large_unfairness_penalty * (fairness_metric - unfairness_threshold) >= 0
+
 
     def set_objective(self):
+
         # Set the objective function
         self.problem += pulp.lpSum(self.objective_function_components), "Total Objective Function"
 
@@ -236,7 +274,7 @@ class HealthcareSchedule:
         if self.problem.status == pulp.LpStatusOptimal:
             print("An optimal solution was found.\n")
             # Generate textual report as shown in your example
-         #   self.debugVariables()
+            #   self.debugVariables()
             self.generate_textreport()
             self.print_schedule()
         else:
