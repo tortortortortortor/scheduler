@@ -39,7 +39,7 @@ class HealthcareSchedule:
         self._add_max_days_worked_constraints()
         self._add_max_consecutive_days_worked_constraints()
         self._add_role_specific_shift_constraints()
-        self._add_shift_distribution_objective()
+        self._add_shift_distribution_objective( )
 
         # ... other constraints
         
@@ -144,7 +144,7 @@ class HealthcareSchedule:
                             if shift_type != assigned_shift:
                                 self.problem += (self.shifts[staff_member, week, day, shift_type] == 0)
 
-
+    # Ensures that each shift type is assigned exactly once per day
     def _add_shift_type_constraints(self):
         for week in range(self.num_weeks):
             for day in range(self.days_per_week):
@@ -160,6 +160,7 @@ class HealthcareSchedule:
                 # Ensure exactly one Night shift per day
                 self.problem += pulp.lpSum(self.shifts[staff_member, week, day, "Night"] for staff_member in self.staff_info) == 1, f"One_Night_Shift_Week{week}_Day{day}"
 
+    # Ensures that each staff member works within their allowed hours
     def _add_work_hours_constraints(self):
         # Constants
         MAX_HOURS_FULL_TIME = 1622
@@ -207,8 +208,8 @@ class HealthcareSchedule:
                         for day_shift in ["D1", "D2", "Mx"]:
                             self.problem += (self.shifts[staff_member, week, day, day_shift] == 0)
 
-    def _add_isolated_day_constraints(self):
-        isolated_day_penalty_weight = 100
+    
+    def _add_isolated_day_constraints(self, isolated_day_penalty_weight=100):
         self.isolated_work_vars = {}
         self.isolated_off_vars = {}
 
