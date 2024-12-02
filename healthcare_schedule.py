@@ -347,7 +347,7 @@ class HealthcareSchedule:
     def solve(self):
         # Solve the LP problem and handle the solution
         # Use PuLP's solver to solve the problem
-        solver = pulp.PULP_CBC_CMD(msg=1, maxSeconds=60)
+        solver = pulp.PULP_CBC_CMD(msg=1)  # Removed maxSeconds argument
         self.problem.solve(solver)
 
         # Check if an optimal solution was found
