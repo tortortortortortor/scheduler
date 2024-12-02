@@ -13,3 +13,5 @@ run
 kanskje du mmå installere masse greier
 
 pip install matplotlib
+
+## python3 ikkje python som er medisinen
