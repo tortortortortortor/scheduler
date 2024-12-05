@@ -1,6 +1,21 @@
 # Healthcare Scheduling
 
-This project aims to solve a healthcare scheduling problem using linear programming.
+The HealthcareSchedule class is a Python-based optimization tool designed for healthcare staff scheduling. It leverages the PuLP library to create a Linear Programming (LP) model that assigns shifts to staff members while satisfying a variety of constraints and optimizing for fairness and efficiency. The class also includes methods for analyzing, visualizing, and exporting the generated schedules.
+
+# Constraints
+
+Constraints are modular and designed to be customizable. These allow the user to fine-tune the schedule by adjusting penalty weights, thresholds, or specific rules.
+
+## How Constraints Enable Customization
+
+1.	Penalty Weights:
+	•	Constraints like isolated days, shift distribution, and weekend fairness use penalty weights. Adjusting these weights alters the priority of the corresponding rule in the optimization process.
+2.	Flexible Thresholds:
+	•	Many constraints accept parameters such as max_days_in_7, day_shift_tolerance, and night_shift_tolerance. These can be modified to reflect organizational policies.
+3.	Binary Variables:
+	•	Binary decision variables (isolated_work_var, weekend_work_var) allow fine-grained control over specific scheduling nuances.
+4.	Role-Specific Rules:
+	•	Constraints like _add_role_specific_shift_constraints ensure that staff members are only assigned to roles they are trained for.
 
 ## Setup
 
