@@ -22,9 +22,9 @@ Constraints are modular and designed to be customizable. These allow the user to
 use python enviornment manager to start a terminal with correct env
 
 run
-
+```bash
 python3 main.py
-
+```
 you might have to install a bunch of thing, noone really knows how package management works in python.
 
 Define worker preferences
